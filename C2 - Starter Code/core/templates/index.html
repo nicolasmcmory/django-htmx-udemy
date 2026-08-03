@@ -1,45 +1,66 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="{% static 'css/tailwind.out.css' %}" />
+    <script
+      src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js"
+      integrity="sha384-H5SrcfygHmAuTDZphMHqBJLc3FhssKjG7w/CeCpFReSfwBWDTKpkzPP8c+cLsK+V"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.11.1/dist/cdn.min.js"
+      defer
+    ></script>
     <title>Django & HTMX</title>
-
-
-</head>
-<body>
-
-    <h1>Hello World!</h1>
-
-    <p>{% lorem 2 %}</p>
-
-    <hr/>
-
+  </head>
+  <body>
+    <div>
+      <h1>Hello World!</h1>
+      <p id="site-content">{% lorem 2 %}</p>
+      <a
+        class="text-blue-500 hover:text-purple-300 underline"
+        hx-get="{% url 'about' %}"
+        hx-target="closest div"
+      >about us</a>
+    </div>
+    <hr />
     <h3>Our products</h3>
     <table id="product-table">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>101</td>
-                <td>Product A</td>
-            </tr>
-            <tr>
-                <td>102</td>
-                <td>Product B</td>
-            </tr>
-            <tr>
-                <td>103</td>
-                <td>Product C</td>
-            </tr>
-        </tbody>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>101</td>
+          <td>Product A</td>
+        </tr>
+        <tr>
+          <td>102</td>
+          <td>Product B</td>
+        </tr>
+        <tr>
+          <td>103</td>
+          <td>Product C</td>
+        </tr>
+      </tbody>
     </table>
-    
+    <div x-data="{ count: 0 }" class="mt-4">
+      <button
+        type="button"
+        x-on:click="count += 1"
+        class="btn"
+      >
+        Increment count
+      </button>
+      <span class="ml-2">Count: <strong x-text="count">0</strong></span>
+    </div>
     <button class="btn">Get more</button>
-</body>
+  </body>
 </html>
