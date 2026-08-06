@@ -1,0 +1,12 @@
+{% comment %} About {% endcomment %}
+{% partialdef about %}
+    <h1>About Us</h1>
+    <p id="about-para" style="color: blue">This paragraph contains some text about our site..........</p>
+{% endpartialdef about %}
+{% comment %} Products {% endcomment %}
+{% partialdef products %}
+    <tr>
+        <td>{{ id }}</td>
+        <td>{{ product }}</td>
+    </tr>
+{% endpartialdef products %}
