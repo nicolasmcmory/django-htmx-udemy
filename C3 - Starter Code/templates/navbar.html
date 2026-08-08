@@ -1,0 +1,19 @@
+<nav
+    class="flex md:flex-row flex-col md:justify-between md:items-center bg-gray-800 p-4 text-white"
+>
+    <div class="flex gap-4">
+        <a href="{% url 'index' %}" class="hover:text-gray-300">Books</a>
+    </div>
+    <div class="flex gap-4 mt-2 md:mt-0">
+        {% if user.is_authenticated %}
+            <span class="text-gray-400">Hello, {{ user.username }}</span>
+            <form method="post" action="{% url 'account_logout' %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="hover:text-gray-300">Logout</button>
+            </form>
+        {% else %}
+            <a href="{% url 'account_login' %}" class="hover:text-gray-300">Login</a>
+            <a href="{% url 'account_signup' %}" class="hover:text-gray-300">Register</a>
+        {% endif %}
+    </div>
+</nav>
