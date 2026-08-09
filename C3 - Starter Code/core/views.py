@@ -1,6 +1,12 @@
 from django.shortcuts import render
+from .services import UserService
+from django.contrib.auth.decorators import login_required
 
 
-# Create your views here.
+# Return all books for given user
+@login_required
 def index(request):
-    return render(request, "index.html")
+    user = UserService(request.user)
+    books = user.get_books()
+    context = {"books": books}
+    return render(request, "index.html", context)
