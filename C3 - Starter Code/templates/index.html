@@ -1,24 +1,85 @@
 {% extends "base.html" %}
 {% block content %}
     <h1 class="p-8 text-4xl">Book tracker</h1>
-    <div class="px-12">
-        {% if books %}
-            <h2 class="text-2xl">Your books:</h2>
-        {% endif %}
-        <div class="flex justify-center">
+    <div class="flex justify-between items-center gap-16 px-24">
+        <div class="flex justify-center items-center py-16">
             <div
-                class="flex flex-col justify-center items-center gap-12 bg-blue-300 mt-12 px-24 py-8 rounded-lg w-2/3"
+                class="flex-col justify-center items-center p-16 border border-black rounded-2xl"
             >
-                {% for book in books %}
-                    <div
-                        class="flex justify-between items-center gap-8 py-2 border-gray-600 border-b w-full"
-                    >
-                        <p class="px-12 text-lg text-center">{{ book.name }}</p>
-                        <p class="px-12 text-lg text-center">{{ book.genres }}</p>
+                {% comment %} #:>Form {% endcomment %}
+                <h2 class="text-2xl">Add a book:</h2>
+                <form
+                    hx-post="{% url 'index' %}"
+                    hx-indicator="#loading"
+                    hx-target="#book-list"
+                    hx-swap="beforeend"
+                    class="flex flex-col gap-8"
+                    novalidate
+                >
+                    {% csrf_token %}
+                    <div class="flex flex-col gap-4">
+                        <label for="name" class="text-lg">Name: <span class="text-red-500">*</span></label>
+                        <input
+                            type="text"
+                            id="name"
+                            name="name"
+                            value="{{ form.name.value|default:'' }}"
+                            class="p-2 border border-gray-600 rounded-lg {% if form.name.errors %}border-red-300{% endif %}"
+                            required
+                            minlength="1"
+                            maxlength="172"
+                        />
+                        {% if form.name.errors %}
+                            <p class="text-red-500 text-sm">{{ form.name.errors.0 }}</p>
+                        {% endif %}
                     </div>
-                {% empty %}
-                    <p>No books found.</p>
-                {% endfor %}
+                    <div class="flex flex-col gap-4">
+                        <label for="genres" class="text-lg">Genres: <span class="text-red-500">*</span></label>
+                        <select
+                            id="genres"
+                            name="genres"
+                            class="p-2 border border-gray-600 rounded-lg {% if form.genres.errors %}border-red-300{% endif %}"
+                            required
+                        >
+                            <option value="">Select a genre...</option>
+                            {% for value, label in form.genres.field.choices %}
+                                <option
+                                    value="{{ value }}"
+                                    {% if form.genres.value == value %}selected{% endif %}
+                                >{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form.genres.errors %}
+                            <p class="text-red-500 text-sm">{{ form.genres.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    {% comment %} #:>Submit form {% endcomment %}
+                    <button
+                        type="submit"
+                        class="p-2 border border-blue-500 rounded-lg cursor-pointer"
+                    >Add book</button>
+                    <div id="loading" class="htmx-indicator">Loading...</div>
+                    {% comment %} Display messages {% endcomment %}
+                    {% comment %} <div id="form-messages" hx-swap-oob="true">
+                        {% include "partials/misc_partials.html#messages" with messages=messages %}
+                    </div> {% endcomment %}
+                </form>
+            </div>
+        </div>
+        <div class="py-16 w-2/3">
+            <h2 class="text-2xl">Your books:</h2>
+            <div class="flex justify-center">
+                <div
+                    class="flex flex-col justify-center items-center gap-12 bg-blue-300 mt-12 px-12 py-8 rounded-lg w-full"
+                >
+                    <div id="book-list">
+                        {% for book in books %}
+                            {% include "partials/misc_partials.html#book_row" with book=book %}
+                        {% empty %}
+                            <p>No books found.</p>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
