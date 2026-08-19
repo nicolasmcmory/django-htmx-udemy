@@ -6,64 +6,74 @@
             <div
                 class="flex-col justify-center items-center p-16 border border-black rounded-2xl"
             >
-                {% comment %} #:>Form {% endcomment %}
                 <h2 class="text-2xl">Add a book:</h2>
-                <form
-                    hx-post="{% url 'index' %}"
-                    hx-indicator="#loading"
-                    hx-target="#book-list"
-                    hx-swap="beforeend"
-                    class="flex flex-col gap-8"
-                    novalidate
-                >
-                    {% csrf_token %}
-                    <div class="flex flex-col gap-4">
-                        <label for="name" class="text-lg">Name: <span class="text-red-500">*</span></label>
-                        <input
-                            type="text"
-                            id="name"
-                            name="name"
-                            value="{{ form.name.value|default:'' }}"
-                            class="p-2 border border-gray-600 rounded-lg {% if form.name.errors %}border-red-300{% endif %}"
-                            required
-                            minlength="1"
-                            maxlength="172"
-                        />
-                        {% if form.name.errors %}
-                            <p class="text-red-500 text-sm">{{ form.name.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-                    <div class="flex flex-col gap-4">
-                        <label for="genres" class="text-lg">Genres: <span class="text-red-500">*</span></label>
-                        <select
-                            id="genres"
-                            name="genres"
-                            class="p-2 border border-gray-600 rounded-lg {% if form.genres.errors %}border-red-300{% endif %}"
-                            required
-                        >
-                            <option value="">Select a genre...</option>
-                            {% for value, label in form.genres.field.choices %}
-                                <option
-                                    value="{{ value }}"
-                                    {% if form.genres.value == value %}selected{% endif %}
-                                >{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                        {% if form.genres.errors %}
-                            <p class="text-red-500 text-sm">{{ form.genres.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-                    {% comment %} #:>Submit form {% endcomment %}
-                    <button
-                        type="submit"
-                        class="p-2 border border-blue-500 rounded-lg cursor-pointer"
-                    >Add book</button>
-                    <div id="loading" class="htmx-indicator">Loading...</div>
-                    {% comment %} Display messages {% endcomment %}
-                    {% comment %} <div id="form-messages" hx-swap-oob="true">
-                        {% include "partials/misc_partials.html#messages" with messages=messages %}
-                    </div> {% endcomment %}
-                </form>
+                {% comment %} #:>Form {% endcomment %}
+                {% comment %} Book creation form {% endcomment %}
+                {% partialdef book_form inline %}
+                    <form
+                        id="book-form"
+                        {% if form_oob %} hx-swap-oob="outerHTML" {% endif %}
+                        hx-post="{% url 'index' %}"
+                        hx-indicator="#loading"
+                        hx-target="#book-list"
+                        hx-swap="afterbegin"
+                        class="flex flex-col gap-8"
+                        novalidate
+                    >
+                        {% csrf_token %}
+                        <div class="flex flex-col gap-4">
+                            <label for="name" class="text-lg">Name: <span class="text-red-500">*</span></label>
+                            <input
+                                type="text"
+                                id="name"
+                                name="name"
+                                value="{{ form.name.value|default:'' }}"
+                                class="p-2 border border-gray-600 rounded-lg {% if form.name.errors %}border-red-300{% endif %}"
+                                required
+                                minlength="1"
+                                maxlength="172"
+                            />
+                            {% if form.name.errors %}
+                                <p class="text-red-500 text-sm">{{ form.name.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="flex flex-col gap-4">
+                            <label for="genres" class="text-lg">Genres: <span class="text-red-500">*</span></label>
+                            <select
+                                id="genres"
+                                name="genres"
+                                class="p-2 border border-gray-600 rounded-lg {% if form.genres.errors %}border-red-300{% endif %}"
+                                required
+                            >
+                                <option value="">Select a genre...</option>
+                                {% for value, label in form.genres.field.choices %}
+                                    <option
+                                        value="{{ value }}"
+                                        {% if form.genres.value == value %}selected{% endif %}
+                                    >{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.genres.errors %}
+                                <p class="text-red-500 text-sm">{{ form.genres.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <button
+                            type="submit"
+                            class="p-2 border border-blue-500 rounded-lg cursor-pointer"
+                        >Add book</button>
+                        {% comment %} Messages on form submission {% endcomment %}
+                        <div id="form-messages">
+                            {% if success %}
+                                <p class="text-green-500 text-sm">{{ success }}</p>
+                            {% endif %}
+                            {% if error %}
+                                <p class="text-red-500 text-sm">{{ error }}</p>
+                            {% endif %}
+                        </div>
+                        {% comment %} Loading status indicator {% endcomment %}
+                        <div id="loading" class="htmx-indicator">Loading...</div>
+                    </form>
+                {% endpartialdef book_form %}
             </div>
         </div>
         <div class="py-16 w-2/3">
@@ -74,9 +84,11 @@
                 >
                     <div id="book-list">
                         {% for book in books %}
-                            {% include "partials/misc_partials.html#book_row" with book=book %}
+                            {% partial book_row_empty %}
                         {% empty %}
-                            <p>No books found.</p>
+                            <span id="empty-state">
+                                <p>No books found.</p>
+                            </span>
                         {% endfor %}
                     </div>
                 </div>
@@ -84,3 +96,48 @@
         </div>
     </div>
 {% endblock content %}
+{% comment %} Page-level partials {% endcomment %}
+{% comment %} Book row partial {% endcomment %}
+{% partialdef book_row %}
+    <div
+        x-data="{show:true}"
+        x-init="setTimeout(()=>show = false, 2000)"
+        x-transition="transition ease-in-out duration-500"
+        :class="show ? 'bg-green-500' : 'bg-inherit'"
+        class="flex justify-between items-center gap-8 py-2 border-gray-600 border-b rounded-lg w-full transition-colors duration-500"
+    >
+        <p class="px-12 text-lg text-center">{{ book.name }}</p>
+        <p class="px-12 text-lg text-center">{{ book.get_genres_display }}</p>
+    </div>
+{% endpartialdef book_row %}
+{% comment %} Render invisible when books present {% endcomment %}
+{% partialdef book_table_empty %}
+    <span class="invisible" id="empty-state" hx-swap-oob="true">
+        <p>No books found.</p>
+    </span>
+{% endpartialdef book_table_empty %}
+{% partialdef form_messages %}
+    <div
+        id="form-messages"
+        hx-swap-oob="true"
+        x-data="{show:true}"
+        x-show="show"
+        x-init="setTimeout(()=>show = false, 2000)"
+        x-transition.opacity.duration.500ms
+    >
+        {% if success %}
+            <p class="text-green-500 text-sm">{{ success }}</p>
+        {% endif %}
+        {% if error %}
+            <p class="text-red-500 text-sm">{{ error }}</p>
+        {% endif %}
+    </div>
+{% endpartialdef form_messages %}
+{% comment %} Form submission Htmx reponse partial {% endcomment %}
+{% partialdef book_row_empty %}
+    {% partial book_row %}
+    {% partial book_table_empty %}
+    {% if success or error %}
+        {% partial form_messages %}
+    {% endif %}
+{% endpartialdef book_row_empty %}
