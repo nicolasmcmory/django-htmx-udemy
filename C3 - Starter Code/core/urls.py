@@ -3,4 +3,7 @@ from . import views
 
 urlpatterns = [
     path("", views.index, name="index"),
+    path(
+        "delete-book/<int:book_id>/", views.DeleteBookView.as_view(), name="delete-book"
+    ),
 ]

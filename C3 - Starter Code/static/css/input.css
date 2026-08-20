@@ -1,1 +1,18 @@
 @import 'tailwindcss';
+
+@keyframes rotate-forward-back {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(90deg);
+  }
+}
+
+@utility hover-rotate-forward-back {
+  &:hover {
+    animation: rotate-forward-back 600ms ease-in-out;
+  }
+}

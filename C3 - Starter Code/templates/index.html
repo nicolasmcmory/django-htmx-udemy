@@ -12,15 +12,25 @@
                 {% partialdef book_form inline %}
                     <form
                         id="book-form"
-                        {% if form_oob %} hx-swap-oob="outerHTML" {% endif %}
+                        action="{% url 'index' %}"
+                        method="post"
                         hx-post="{% url 'index' %}"
                         hx-indicator="#loading"
                         hx-target="#book-list"
                         hx-swap="afterbegin"
+                        hx-status:422="target:#book-form swap:outerHTML"
+                        hx-on::after:request="if (ctx.response.status < 400) this.reset()"
                         class="flex flex-col gap-8"
                         novalidate
                     >
                         {% csrf_token %}
+                        {% if form.non_field_errors %}
+                            <div class="text-red-500 text-sm">
+                                {% for error in form.non_field_errors %}
+                                    <p>{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                         <div class="flex flex-col gap-4">
                             <label for="name" class="text-lg">Name: <span class="text-red-500">*</span></label>
                             <input
@@ -34,7 +44,9 @@
                                 maxlength="172"
                             />
                             {% if form.name.errors %}
-                                <p class="text-red-500 text-sm">{{ form.name.errors.0 }}</p>
+                                {% for error in form.name.errors %}
+                                    <p class="text-red-500 text-sm">{{ error }}</p>
+                                {% endfor %}
                             {% endif %}
                         </div>
                         <div class="flex flex-col gap-4">
@@ -54,7 +66,9 @@
                                 {% endfor %}
                             </select>
                             {% if form.genres.errors %}
-                                <p class="text-red-500 text-sm">{{ form.genres.errors.0 }}</p>
+                                {% for error in form.genres.errors %}
+                                    <p class="text-red-500 text-sm">{{ error }}</p>
+                                {% endfor %}
                             {% endif %}
                         </div>
                         <button
@@ -71,7 +85,9 @@
                             {% endif %}
                         </div>
                         {% comment %} Loading status indicator {% endcomment %}
-                        <div id="loading" class="htmx-indicator">Loading...</div>
+                        {% if is_htmx %}
+                            <div id="loading" class="htmx-indicator">Loading...</div>
+                        {% endif %}
                     </form>
                 {% endpartialdef book_form %}
             </div>
@@ -100,14 +116,19 @@
 {% comment %} Book row partial {% endcomment %}
 {% partialdef book_row %}
     <div
-        x-data="{show:true}"
-        x-init="setTimeout(()=>show = false, 2000)"
-        x-transition="transition ease-in-out duration-500"
-        :class="show ? 'bg-green-500' : 'bg-inherit'"
-        class="flex justify-between items-center gap-8 py-2 border-gray-600 border-b rounded-lg w-full transition-colors duration-500"
+        {% if is_htmx %} x-data="{show:true}" x-init="setTimeout(()=>show = false, 2000)" x-transition="transition ease-in-out duration-500" :class="show ? 'bg-green-500' : 'bg-inherit'" {% endif %}
+        class="flex justify-between items-center gap-8 px-8 py-2 rounded-lg w-auto transition-colors duration-500"
     >
         <p class="px-12 text-lg text-center">{{ book.name }}</p>
         <p class="px-12 text-lg text-center">{{ book.get_genres_display }}</p>
+        {% comment %} #:> Delete book button {% endcomment %}
+        <button
+            hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+            hx-delete="{% url "delete-book" book.pk %}"
+            hx-target="closest div"
+            hx-swap="outerHTML"
+            class="bg-gray-600 rounded-lg w-8 h-fit text-red-500 text-lg text-center hover-rotate-forward-back cursor-pointer"
+        >X</button>
     </div>
 {% endpartialdef book_row %}
 {% comment %} Render invisible when books present {% endcomment %}
@@ -137,7 +158,9 @@
 {% partialdef book_row_empty %}
     {% partial book_row %}
     {% partial book_table_empty %}
-    {% if success or error %}
-        {% partial form_messages %}
+    {% if is_htmx %}
+        {% if success or error %}
+            {% partial form_messages %}
+        {% endif %}
     {% endif %}
 {% endpartialdef book_row_empty %}
