@@ -20,6 +20,7 @@
     <body>
         {% include 'navbar.html' %}
         {% block content %}{% endblock %}
+        {% comment %} Confirmation modal {% endcomment %}
         <div
             x-data="confirmModal"
             x-cloak
