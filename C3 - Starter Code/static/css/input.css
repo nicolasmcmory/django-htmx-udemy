@@ -1,5 +1,10 @@
 @import 'tailwindcss';
 
+/* Cloak all alpine components until Alpine is loaded */
+[x-cloak] {
+  display: none !important;
+}
+
 @keyframes rotate-forward-back {
   0%,
   100% {

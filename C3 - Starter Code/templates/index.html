@@ -7,7 +7,6 @@
                 class="flex-col justify-center items-center p-16 border border-black rounded-2xl"
             >
                 <h2 class="text-2xl">Add a book:</h2>
-                {% comment %} #:>Form {% endcomment %}
                 {% comment %} Book creation form {% endcomment %}
                 {% partialdef book_form inline %}
                     <form
@@ -76,11 +75,16 @@
                             class="p-2 border border-blue-500 rounded-lg cursor-pointer"
                         >Add book</button>
                         {% comment %} Messages on form submission {% endcomment %}
-                        <div id="form-messages">
+                        <div
+                            id="form-messages"
+                            data-message="{% firstof success error '' %}"
+                            x-data="timedVisibility(Boolean($el.dataset.message)) "
+                            x-show="show"
+                            x-transition.opacity.duration.500ms
+                        >
                             {% if success %}
                                 <p class="text-green-500 text-sm">{{ success }}</p>
-                            {% endif %}
-                            {% if error %}
+                            {% elif error %}
                                 <p class="text-red-500 text-sm">{{ error }}</p>
                             {% endif %}
                         </div>
@@ -96,27 +100,35 @@
             <h2 class="text-2xl">Your books:</h2>
             <div class="flex justify-center">
                 <div
-                    class="flex flex-col justify-center items-center gap-12 bg-blue-300 mt-12 px-12 py-8 rounded-lg w-full"
+                    class="flex flex-col justify-center items-center bg-blue-300 mt-12 px-12 py-8 rounded-lg w-full"
                 >
                     <div id="book-list">
                         {% for book in books %}
-                            {% partial book_row_empty %}
-                        {% empty %}
-                            <span id="empty-state">
-                                <p>No books found.</p>
-                            </span>
+                            {% partial book_row %}
                         {% endfor %}
                     </div>
+                    {% comment %} Book table empty state partial with empty state message {% endcomment %}
+                    {% partialdef book_table_empty inline %}
+                        <div
+                            id="empty-state"
+                            class="{% if books %}hidden{% endif %}"
+                            hx-swap-oob="true"
+                        >
+                            <p>No books found.</p>
+                        </div>
+                    {% endpartialdef book_table_empty %}
                 </div>
             </div>
         </div>
     </div>
+    ``
 {% endblock content %}
 {% comment %} Page-level partials {% endcomment %}
 {% comment %} Book row partial {% endcomment %}
 {% partialdef book_row %}
     <div
-        {% if is_htmx %} x-data="{show:true}" x-init="setTimeout(()=>show = false, 2000)" x-transition="transition ease-in-out duration-500" :class="show ? 'bg-green-500' : 'bg-inherit'" {% endif %}
+        x-data="timedVisibility"
+        :class="show ? 'bg-green-500' : 'bg-inherit'"
         class="flex justify-between items-center gap-8 px-8 py-2 rounded-lg w-auto transition-colors duration-500"
     >
         <p class="px-12 text-lg text-center">{{ book.name }}</p>
@@ -126,24 +138,19 @@
             hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
             hx-delete="{% url "delete-book" book.pk %}"
             hx-target="closest div"
-            hx-swap="outerHTML"
+            hx-swap="delete"
+            hx-confirm="Are you sure you want to delete {{ book.name }}?"
             class="bg-gray-600 rounded-lg w-8 h-fit text-red-500 text-lg text-center hover-rotate-forward-back cursor-pointer"
         >X</button>
     </div>
 {% endpartialdef book_row %}
-{% comment %} Render invisible when books present {% endcomment %}
-{% partialdef book_table_empty %}
-    <span class="invisible" id="empty-state" hx-swap-oob="true">
-        <p>No books found.</p>
-    </span>
-{% endpartialdef book_table_empty %}
 {% partialdef form_messages %}
     <div
         id="form-messages"
         hx-swap-oob="true"
-        x-data="{show:true}"
+        data-message="{% firstof success error '' %}"
+        x-data="timedVisibility(Boolean($el.dataset.message)) "
         x-show="show"
-        x-init="setTimeout(()=>show = false, 2000)"
         x-transition.opacity.duration.500ms
     >
         {% if success %}
@@ -154,8 +161,8 @@
         {% endif %}
     </div>
 {% endpartialdef form_messages %}
-{% comment %} Form submission Htmx reponse partial {% endcomment %}
-{% partialdef book_row_empty %}
+{% comment %} Book table header partial {% endcomment %}
+{% partialdef book_table %}
     {% partial book_row %}
     {% partial book_table_empty %}
     {% if is_htmx %}
@@ -163,4 +170,4 @@
             {% partial form_messages %}
         {% endif %}
     {% endif %}
-{% endpartialdef book_row_empty %}
+{% endpartialdef book_table %}

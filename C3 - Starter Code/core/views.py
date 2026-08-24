@@ -3,7 +3,6 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views import View
-from django.http import HttpResponse
 
 # Local modules
 from .services import UserService, BookService
@@ -40,8 +39,13 @@ def index(request):
             if is_htmx:
                 return render(
                     request,
-                    "index.html#book_row_empty",
-                    {"book": book, "success": success_message, "is_htmx": is_htmx},
+                    "index.html#book_table",
+                    {
+                        "book": book,
+                        "is_htmx": is_htmx,
+                        "success": success_message,
+                        "books": context["books"],
+                    },
                 )
 
             else:
@@ -78,24 +82,31 @@ def delete_book(request, book_id):
 # Delete book by method 2: Class-based view
 # TODO: Implement HTMX response behaviour for deletion and success message
 class DeleteBookView(LoginRequiredMixin, View):
-    def post(self, request, book_id):
-
-        # Htmx check
-        is_htmx = request.headers.get("HX-Request") == "true"
-
-        book = BookService.get_by_id(book_id)
+    def delete(self, request, book_id):
         user = UserService(request.user)
+        books = user.get_books()
+        book = BookService.get_by_id(book_id)
+        book_name = book.name
         context = {
             "book": book,
         }
 
+        # Htmx check
+        is_htmx = request.headers.get("HX-Request") == "true"
+
         # TODO: Validate that the book belongs to the user before deletion
         user.remove_book(book)  # Remove the book from the user's collection
+        books = user.get_books()
         # TODO: Include a success message in the context for htmx response
         success_message = f"Book '{book_name}' deleted successfully!"
         context["success"] = success_message
         if is_htmx:
-            return HttpResponse(status=204)  # Return a 204 No Content response for htmx
+            # Return the empty-state OOB fragment so it becomes visible once the last book is removed
+            return render(
+                request,
+                "index.html#book_table_empty",
+                {"books": books},
+            )
         # Full page redirect if not htmx
         else:
             return redirect("index")
