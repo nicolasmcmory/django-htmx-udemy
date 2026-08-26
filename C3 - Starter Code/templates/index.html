@@ -192,7 +192,7 @@
         hx-indicator="#loading"
         hx-target="#book-{{ book.pk }}"
         hx-swap="outerHTML"
-        hx-push-url="true"
+        hx-replace-url="{% url 'index' %}"
         hx-status:422="target:#book-form-edit swap:outerHTML"
         x-on:htmx:after:request="if ($event.detail.ctx.response.status < 400) editOpen = false;"
         class="flex flex-col gap-8 bg-white p-8 rounded-lg w-full max-w-md"
