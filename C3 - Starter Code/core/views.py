@@ -3,6 +3,8 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views import View
+from django.http import QueryDict
+from django.shortcuts import get_object_or_404
 
 # Local modules
 from .services import UserService, BookService
@@ -61,7 +63,7 @@ def index(request):
             if is_htmx:
                 return render(
                     request,
-                    "index.html#book_form",
+                    "index.html#book_form_add",
                     {"form": form, "error": error_message, "is_htmx": is_htmx},
                     status=422,
                 )
@@ -80,7 +82,6 @@ def delete_book(request, book_id):
 
 
 # Delete book by method 2: Class-based view
-# TODO: Implement HTMX response behaviour for deletion and success message
 class DeleteBookView(LoginRequiredMixin, View):
     def delete(self, request, book_id):
         user = UserService(request.user)
@@ -110,3 +111,74 @@ class DeleteBookView(LoginRequiredMixin, View):
         # Full page redirect if not htmx
         else:
             return redirect("index")
+
+
+class EditBookView(LoginRequiredMixin, View):
+    def get(self, request, book_id):
+        user = UserService(request.user)
+        book = BookService.get_by_id(book_id)
+        form = BookForm(instance=book, user=user)
+        context = {
+            "form": form,
+            "book": book,
+        }
+        return render(request, "index.html#book_form_edit", context)
+
+    def put(self, request, book_id):
+        user = UserService(request.user)
+        books = user.get_books()
+        context = {
+            "books": books,
+            "form": BookForm(user=user),
+        }
+        book = get_object_or_404(user.get_books(), pk=book_id)
+
+        data = QueryDict(request.body.decode("utf-8"))
+        form = BookForm(data, instance=book, user=user)
+
+        # Htmx check
+        is_htmx = request.headers.get("HX-Request") == "true"
+
+        if form.is_valid():
+
+            book = form.save()
+            success_message = f"Book '{book.name}' added successfully!"
+            context["success"] = success_message
+            context["form"] = BookForm(user=user)
+            context["books"] = user.get_books()
+
+            # Render as htmx fragment if htmx is present and reset form
+            if is_htmx:
+                return render(
+                    request,
+                    "index.html#book_item",
+                    {"book": book},
+                )
+
+            else:
+                return render(request, "index.html", context)
+
+        # If errors, pass current form in context
+        else:
+            context["form"] = form
+            error_message = "Please correct the errors above."
+            context["error"] = error_message
+
+            # If htmx is present, render the form fragment with errors
+            if is_htmx:
+                return render(
+                    request,
+                    "index.html#book_form_edit",
+                    {
+                        "book": book,
+                        "form": form,
+                        "error": error_message,
+                        "is_htmx": is_htmx,
+                    },
+                    status=422,
+                )
+            # If htmx is not present, render the full page with errors
+            else:
+                return render(request, "index.html", context)
+
+        return render(request, "index.html", context)

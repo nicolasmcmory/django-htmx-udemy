@@ -18,7 +18,7 @@ class BookForm(forms.ModelForm):
         name = name.strip()
 
         # Existing books check
-        existing_books = self.user.get_books()
+        existing_books = self.user.get_books().exclude(pk=self.instance.pk)
         if existing_books:
             existing_books = [book.name.lower() for book in existing_books]
             if name.lower() in existing_books:

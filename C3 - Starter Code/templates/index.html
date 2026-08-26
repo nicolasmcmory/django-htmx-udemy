@@ -8,92 +8,7 @@
             >
                 <h2 class="text-2xl">Add a book:</h2>
                 {% comment %} Book creation form {% endcomment %}
-                {% partialdef book_form inline %}
-                    <form
-                        id="book-form"
-                        action="{% url 'index' %}"
-                        method="post"
-                        hx-post="{% url 'index' %}"
-                        hx-indicator="#loading"
-                        hx-target="#book-list"
-                        hx-swap="afterbegin"
-                        hx-status:422="target:#book-form swap:outerHTML"
-                        hx-on::after:request="if (ctx.response.status < 400) this.reset()"
-                        class="flex flex-col gap-8"
-                        novalidate
-                    >
-                        {% csrf_token %}
-                        {% if form.non_field_errors %}
-                            <div class="text-red-500 text-sm">
-                                {% for error in form.non_field_errors %}
-                                    <p>{{ error }}</p>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                        <div class="flex flex-col gap-4">
-                            <label for="name" class="text-lg">Name: <span class="text-red-500">*</span></label>
-                            <input
-                                type="text"
-                                id="name"
-                                name="name"
-                                value="{{ form.name.value|default:'' }}"
-                                class="p-2 border border-gray-600 rounded-lg {% if form.name.errors %}border-red-300{% endif %}"
-                                required
-                                minlength="1"
-                                maxlength="172"
-                            />
-                            {% if form.name.errors %}
-                                {% for error in form.name.errors %}
-                                    <p class="text-red-500 text-sm">{{ error }}</p>
-                                {% endfor %}
-                            {% endif %}
-                        </div>
-                        <div class="flex flex-col gap-4">
-                            <label for="genres" class="text-lg">Genres: <span class="text-red-500">*</span></label>
-                            <select
-                                id="genres"
-                                name="genres"
-                                class="p-2 border border-gray-600 rounded-lg {% if form.genres.errors %}border-red-300{% endif %}"
-                                required
-                            >
-                                <option value="">Select a genre...</option>
-                                {% for value, label in form.genres.field.choices %}
-                                    <option
-                                        value="{{ value }}"
-                                        {% if form.genres.value == value %}selected{% endif %}
-                                    >{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                            {% if form.genres.errors %}
-                                {% for error in form.genres.errors %}
-                                    <p class="text-red-500 text-sm">{{ error }}</p>
-                                {% endfor %}
-                            {% endif %}
-                        </div>
-                        <button
-                            type="submit"
-                            class="p-2 border border-blue-500 rounded-lg cursor-pointer"
-                        >Add book</button>
-                        {% comment %} Messages on form submission {% endcomment %}
-                        <div
-                            id="form-messages"
-                            data-message="{% firstof success error '' %}"
-                            x-data="timedVisibility(Boolean($el.dataset.message)) "
-                            x-show="show"
-                            x-transition.opacity.duration.500ms
-                        >
-                            {% if success %}
-                                <p class="text-green-500 text-sm">{{ success }}</p>
-                            {% elif error %}
-                                <p class="text-red-500 text-sm">{{ error }}</p>
-                            {% endif %}
-                        </div>
-                        {% comment %} Loading status indicator {% endcomment %}
-                        {% if is_htmx %}
-                            <div id="loading" class="htmx-indicator">Loading...</div>
-                        {% endif %}
-                    </form>
-                {% endpartialdef book_form %}
+                {% partial book_form_add %}
             </div>
         </div>
         <div class="py-16 w-2/3">
@@ -102,10 +17,17 @@
                 <div
                     class="flex flex-col justify-center items-center bg-blue-300 mt-12 px-12 py-8 rounded-lg w-full"
                 >
-                    <div id="book-list">
+                    <div x-data="{editOpen : false}" id="book-list" class="w-full">
                         {% for book in books %}
-                            {% partial book_row %}
+                            {% partial book_item %}
                         {% endfor %}
+                        {% comment %} #:> Popup for book editing {% endcomment %}
+                        <div
+                            id="edit-book-container"
+                            x-show="editOpen"
+                            x-cloak
+                            class="z-50 fixed inset-0 flex justify-center items-center bg-black/50 p-4"
+                        ></div>
                     </div>
                     {% comment %} Book table empty state partial with empty state message {% endcomment %}
                     {% partialdef book_table_empty inline %}
@@ -121,29 +43,41 @@
             </div>
         </div>
     </div>
-    ``
+    {% comment %} Confirmation modal for book UD {% endcomment %}
+    {% include "partials/modals.html#delete_confirm" %}
 {% endblock content %}
 {% comment %} Page-level partials {% endcomment %}
 {% comment %} Book row partial {% endcomment %}
 {% partialdef book_row %}
     <div
         x-data="timedVisibility"
-        :class="show ? 'bg-green-500' : 'bg-inherit'"
-        class="flex justify-between items-center gap-8 px-8 py-2 rounded-lg w-auto transition-colors duration-500"
+        :class="show?'bg-green-500':'bg-inherit'"
+        class="flex justify-between items-center gap-8 px-8 py-2 rounded-lg transition-colors duration-200"
     >
-        <p class="px-12 text-lg text-center">{{ book.name }}</p>
-        <p class="px-12 text-lg text-center">{{ book.get_genres_display }}</p>
-        {% comment %} #:> Delete book button {% endcomment %}
+        <p class="flex-1 px-12 text-lg text-center">{{ book.name }}</p>
+        <p class="flex-1 px-12 text-lg text-center">{{ book.get_genres_display }}</p>
+        {% comment %} #:> Edit book button {% endcomment %}
+        <button
+            @click="editOpen = true"
+            hx-get="{% url "edit-book" book.pk %}"
+            hx-target="#edit-book-container"
+            hx-push-url="true"
+            class="flex-1 bg-gray-200 p-2 rounded-lg text-gray-800 text-lg text-center text-center hover:scale-120 cursor-pointer"
+        >edit</button>
+        {% comment %} Delete book button {% endcomment %}
         <button
             hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
             hx-delete="{% url "delete-book" book.pk %}"
-            hx-target="closest div"
+            hx-target="closest #book-{{ book.pk }}"
             hx-swap="delete"
             hx-confirm="Are you sure you want to delete {{ book.name }}?"
-            class="bg-gray-600 rounded-lg w-8 h-fit text-red-500 text-lg text-center hover-rotate-forward-back cursor-pointer"
-        >X</button>
+            class="flex-1 bg-gray-600 rounded-lg w-8 h-fit text-red-500 text-lg text-center hover:scale-120 cursor-pointer"
+        >delete</button>
     </div>
 {% endpartialdef book_row %}
+{% partialdef book_item %}
+    <div id="book-{{ book.pk }}">{% partial book_row %}</div>
+{% endpartialdef book_item %}
 {% partialdef form_messages %}
     <div
         id="form-messages"
@@ -161,9 +95,184 @@
         {% endif %}
     </div>
 {% endpartialdef form_messages %}
+{% partialdef book_form_add %}
+    <form
+        id="book-form-add"
+        action="{% url 'index' %}"
+        method="post"
+        hx-post="{% url 'index' %}"
+        hx-indicator="#loading"
+        hx-target="#book-list"
+        hx-swap="afterbegin"
+        hx-status:422="target:#book-form-add swap:outerHTML"
+        hx-on::after:request="if (ctx.response.status < 400) this.reset()"
+        class="flex flex-col gap-8"
+        novalidate
+    >
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="text-red-500 text-sm">
+                {% for error in form.non_field_errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <div class="flex flex-col gap-4">
+            <label for="name" class="text-lg">Name: <span class="text-red-500">*</span></label>
+            <input
+                type="text"
+                id="name"
+                name="name"
+                value="{{ form.name.value|default:'' }}"
+                class="p-2 border border-gray-600 rounded-lg {% if form.name.errors %}border-red-300{% endif %}"
+                required
+                minlength="1"
+                maxlength="172"
+            />
+            {% if form.name.errors %}
+                {% for error in form.name.errors %}
+                    <p class="text-red-500 text-sm">{{ error }}</p>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <div class="flex flex-col gap-4">
+            <label for="genres" class="text-lg">Genres: <span class="text-red-500">*</span></label>
+            <select
+                id="genres"
+                name="genres"
+                class="p-2 border border-gray-600 rounded-lg {% if form.genres.errors %}border-red-300{% endif %}"
+                required
+            >
+                <option value="">Select a genre...</option>
+                {% for value, label in form.genres.field.choices %}
+                    <option
+                        value="{{ value }}"
+                        {% if form.genres.value == value %}selected{% endif %}
+                    >{{ label }}</option>
+                {% endfor %}
+            </select>
+            {% if form.genres.errors %}
+                {% for error in form.genres.errors %}
+                    <p class="text-red-500 text-sm">{{ error }}</p>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <button
+            type="submit"
+            class="p-2 border border-blue-500 rounded-lg cursor-pointer"
+        >Add book</button>
+        {% comment %} Messages on form submission {% endcomment %}
+        <div
+            id="form-messages"
+            data-message="{% firstof success error '' %}"
+            x-data="timedVisibility(Boolean($el.dataset.message)) "
+            x-show="show"
+            x-transition.opacity.duration.500ms
+        >
+            {% if success %}
+                <p class="text-green-500 text-sm">{{ success }}</p>
+            {% elif error %}
+                <p class="text-red-500 text-sm">{{ error }}</p>
+            {% endif %}
+        </div>
+        {% comment %} Loading status indicator {% endcomment %}
+        {% if is_htmx %}
+            <div id="loading" class="htmx-indicator">Loading...</div>
+        {% endif %}
+    </form>
+{% endpartialdef book_form_add %}
+{% comment %} #:> Edit book form {% endcomment %}
+{% partialdef book_form_edit %}
+    <form
+        id="book-form-edit"
+        @click.outside="editOpen = false"
+        action="{% url 'edit-book' book.pk %}"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        hx-put="{% url 'edit-book' book.pk %}"
+        hx-indicator="#loading"
+        hx-target="#book-{{ book.pk }}"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+        hx-status:422="target:#book-form-edit swap:outerHTML"
+        x-on:htmx:after:request="if ($event.detail.ctx.response.status < 400) editOpen = false;"
+        class="flex flex-col gap-8 bg-white p-8 rounded-lg w-full max-w-md"
+        novalidate
+    >
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="text-red-500 text-sm">
+                {% for error in form.non_field_errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <div class="flex flex-col gap-4">
+            <label for="name" class="text-lg">Name: <span class="text-red-500">*</span></label>
+            <input
+                type="text"
+                id="name"
+                name="name"
+                value="{{ form.name.value|default:'' }}"
+                class="p-2 border border-gray-600 rounded-lg {% if form.name.errors %}border-red-300{% endif %}"
+                required
+                minlength="1"
+                maxlength="172"
+            />
+            {% if form.name.errors %}
+                {% for error in form.name.errors %}
+                    <p class="text-red-500 text-sm">{{ error }}</p>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <div class="flex flex-col gap-4">
+            <label for="genres" class="text-lg">Genres: <span class="text-red-500">*</span></label>
+            <select
+                id="genres"
+                name="genres"
+                class="p-2 border border-gray-600 rounded-lg {% if form.genres.errors %}border-red-300{% endif %}"
+                required
+            >
+                <option value="">Select a genre...</option>
+                {% for value, label in form.genres.field.choices %}
+                    <option
+                        value="{{ value }}"
+                        {% if form.genres.value == value %}selected{% endif %}
+                    >{{ label }}</option>
+                {% endfor %}
+            </select>
+            {% if form.genres.errors %}
+                {% for error in form.genres.errors %}
+                    <p class="text-red-500 text-sm">{{ error }}</p>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <button
+            type="submit"
+            class="p-2 border border-blue-500 rounded-lg cursor-pointer"
+        >Edit book</button>
+        {% comment %} Messages on form submission {% endcomment %}
+        <div
+            id="form-messages"
+            data-message="{% firstof success error '' %}"
+            x-data="timedVisibility(Boolean($el.dataset.message)) "
+            x-show="show"
+            x-transition.opacity.duration.500ms
+        >
+            {% if success %}
+                <p class="text-green-500 text-sm">{{ success }}</p>
+            {% elif error %}
+                <p class="text-red-500 text-sm">{{ error }}</p>
+            {% endif %}
+        </div>
+        {% comment %} Loading status indicator {% endcomment %}
+        {% if is_htmx %}
+            <div id="loading" class="htmx-indicator">Loading...</div>
+        {% endif %}
+    </form>
+{% endpartialdef book_form_edit %}
 {% comment %} Book table header partial {% endcomment %}
 {% partialdef book_table %}
-    {% partial book_row %}
+    {% partial book_item %}
     {% partial book_table_empty %}
     {% if is_htmx %}
         {% if success or error %}

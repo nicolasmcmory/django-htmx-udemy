@@ -6,4 +6,5 @@ urlpatterns = [
     path(
         "delete-book/<int:book_id>/", views.DeleteBookView.as_view(), name="delete-book"
     ),
+    path("edit-book/<int:book_id>/", views.EditBookView.as_view(), name="edit-book"),
 ]
