@@ -86,7 +86,7 @@ class DeleteBookView(LoginRequiredMixin, View):
     def delete(self, request, book_id):
         user = UserService(request.user)
         books = user.get_books()
-        book = BookService.get_by_id(book_id)
+        book = get_object_or_404(books, pk=book_id)
         book_name = book.name
         context = {
             "book": book,
@@ -95,12 +95,8 @@ class DeleteBookView(LoginRequiredMixin, View):
         # Htmx check
         is_htmx = request.headers.get("HX-Request") == "true"
 
-        # TODO: Validate that the book belongs to the user before deletion
         user.remove_book(book)  # Remove the book from the user's collection
         books = user.get_books()
-        # TODO: Include a success message in the context for htmx response
-        success_message = f"Book '{book_name}' deleted successfully!"
-        context["success"] = success_message
         if is_htmx:
             # Return the empty-state OOB fragment so it becomes visible once the last book is removed
             return render(
@@ -112,25 +108,24 @@ class DeleteBookView(LoginRequiredMixin, View):
         else:
             return redirect("index")
 
-# TODO: verify put to post request instead
+
 class EditBookView(LoginRequiredMixin, View):
+
     def get(self, request, book_id):
         user = UserService(request.user)
         book = get_object_or_404(user.get_books(), pk=book_id)
         form = BookForm(instance=book, user=user)
-        context = {
-            "form": form,
-            "book": book,
-        }
-        return render(request, "index.html#book_form_edit", context)
+
+        # Check if the request is an htmx request
+        if request.htmx:
+            return render(
+                request,
+                "index.html#book_form_edit",
+                {"form": form, "book": book, "is_htmx": True},
+            )
+        return redirect("index")
 
     def post(self, request, book_id):
-        user = UserService(request.user)
-        book = get_object_or_404(user.get_books(), pk=book_id)
-        form = BookForm(request.POST, instance=book, user=user)
-
-        # Htmx check
-        is_htmx = request.headers.get("HX-Request") == "true"
 
         if form.is_valid():
 
@@ -138,11 +133,11 @@ class EditBookView(LoginRequiredMixin, View):
             success_message = f"Book '{book.name}' updated successfully!"
 
             # Render as htmx fragment if htmx is present and reset form
-            if is_htmx:
+            if request.htmx:
                 return render(
                     request,
                     "index.html#book_item",
-                    {"book": book, "success":success_message},
+                    {"book": book, "success": success_message},
                 )
 
             else:
@@ -153,7 +148,7 @@ class EditBookView(LoginRequiredMixin, View):
             error_message = "Please correct the errors above."
 
             # If htmx is present, render the form fragment with errors
-            if is_htmx:
+            if request.htmx:
                 return render(
                     request,
                     "index.html#book_form_edit",
@@ -161,14 +156,10 @@ class EditBookView(LoginRequiredMixin, View):
                         "book": book,
                         "form": form,
                         "error": error_message,
-                        "is_htmx": is_htmx,
+                        "is_htmx": True,
                     },
                     status=422,
                 )
             # If htmx is not present, render the full page with errors
-            
-        return render(
-            request, 
-            "index.html", 
-            {"form": form, "error": error_message, "books": user.get_books()}
-        )
+
+        return redirect("index")
