@@ -186,9 +186,9 @@
     <form
         id="book-form-edit"
         @click.outside="editOpen = false"
+        method="post"
         action="{% url 'edit-book' book.pk %}"
-        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-        hx-put="{% url 'edit-book' book.pk %}"
+        hx-post="{% url 'edit-book' book.pk %}"
         hx-indicator="#loading"
         hx-target="#book-{{ book.pk }}"
         hx-swap="outerHTML"
