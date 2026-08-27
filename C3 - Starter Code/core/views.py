@@ -112,11 +112,11 @@ class DeleteBookView(LoginRequiredMixin, View):
         else:
             return redirect("index")
 
-
+# TODO: verify put to post request instead
 class EditBookView(LoginRequiredMixin, View):
     def get(self, request, book_id):
         user = UserService(request.user)
-        book = BookService.get_by_id(book_id)
+        book = get_object_or_404(user.get_books(), pk=book_id)
         form = BookForm(instance=book, user=user)
         context = {
             "form": form,
@@ -124,17 +124,10 @@ class EditBookView(LoginRequiredMixin, View):
         }
         return render(request, "index.html#book_form_edit", context)
 
-    def put(self, request, book_id):
+    def post(self, request, book_id):
         user = UserService(request.user)
-        books = user.get_books()
-        context = {
-            "books": books,
-            "form": BookForm(user=user),
-        }
         book = get_object_or_404(user.get_books(), pk=book_id)
-
-        data = QueryDict(request.body.decode("utf-8"))
-        form = BookForm(data, instance=book, user=user)
+        form = BookForm(request.POST, instance=book, user=user)
 
         # Htmx check
         is_htmx = request.headers.get("HX-Request") == "true"
@@ -142,27 +135,22 @@ class EditBookView(LoginRequiredMixin, View):
         if form.is_valid():
 
             book = form.save()
-            success_message = f"Book '{book.name}' added successfully!"
-            context["success"] = success_message
-            context["form"] = BookForm(user=user)
-            context["books"] = user.get_books()
+            success_message = f"Book '{book.name}' updated successfully!"
 
             # Render as htmx fragment if htmx is present and reset form
             if is_htmx:
                 return render(
                     request,
                     "index.html#book_item",
-                    {"book": book},
+                    {"book": book, "success":success_message},
                 )
 
             else:
-                return render(request, "index.html", context)
+                return redirect("index")
 
         # If errors, pass current form in context
         else:
-            context["form"] = form
             error_message = "Please correct the errors above."
-            context["error"] = error_message
 
             # If htmx is present, render the form fragment with errors
             if is_htmx:
@@ -178,7 +166,9 @@ class EditBookView(LoginRequiredMixin, View):
                     status=422,
                 )
             # If htmx is not present, render the full page with errors
-            else:
-                return render(request, "index.html", context)
-
-        return render(request, "index.html", context)
+            
+        return render(
+            request, 
+            "index.html", 
+            {"form": form, "error": error_message, "books": user.get_books()}
+        )
