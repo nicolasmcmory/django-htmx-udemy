@@ -5,6 +5,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views import View
 from django.http import QueryDict
 from django.shortcuts import get_object_or_404
+from django.http import HttpResponse
+from django.db.models import Q
 
 # Local modules
 from .services import UserService, BookService
@@ -82,7 +84,7 @@ def delete_book(request, book_id):
 
 
 # Delete book by method 2: Class-based view
-class DeleteBookView(LoginRequiredMixin, View):
+class DeleteBook(LoginRequiredMixin, View):
     def delete(self, request, book_id):
         user = UserService(request.user)
         books = user.get_books()
@@ -109,7 +111,7 @@ class DeleteBookView(LoginRequiredMixin, View):
             return redirect("index")
 
 
-class EditBookView(LoginRequiredMixin, View):
+class EditBook(LoginRequiredMixin, View):
 
     def get(self, request, book_id):
         user = UserService(request.user)
@@ -126,6 +128,9 @@ class EditBookView(LoginRequiredMixin, View):
         return redirect("index")
 
     def post(self, request, book_id):
+        user = UserService(request.user)
+        book = get_object_or_404(user.get_books(), pk=book_id)
+        form = BookForm(request.POST, instance=book, user=user)
 
         if form.is_valid():
 
@@ -163,3 +168,16 @@ class EditBookView(LoginRequiredMixin, View):
             # If htmx is not present, render the full page with errors
 
         return redirect("index")
+
+
+class SearchBooks(LoginRequiredMixin, View):
+    def get(self, request):
+        user = UserService(request.user)
+        books = user.get_books()
+        query = request.GET.get("search", "")
+        # Get the first matching book for both name and genre search
+        books = books.filter(
+            Q(name__icontains=query) | Q(genres__icontains=query)
+        )
+        print(f"Search query: {query}")  # Debugging line
+        return HttpResponse()
