@@ -41,38 +41,20 @@
                     name="search"
                     hx-get="{% url 'search-books' %}"
                     hx-trigger="input changed delay:200ms, keyup[key=='Enter'], load"
-                    hx-target="#results"
+                    hx-swap="innerHTML"
+                    hx-target="#book-list"
                     hx-indicator=".htmx-indicator"
                     class="p-2 pl-10 border border-gray-600 w-full"
                 >
             </div>
-            <div id="results"></div>
-            {% comment %} Book list container {% endcomment %}
+            {% comment %} #:> Book list container {% endcomment %}
             <div
                 class="flex flex-col justify-center items-center bg-blue-300 mt-6 px-12 py-8 rounded-lg w-full"
             >
                 <div x-data="{editOpen : false}" id="book-list" class="w-full">
-                    {% for book in books %}
-                        {% partial book_item %}
-                    {% endfor %}
-                    {% comment %} #:> Popup container for book editing {% endcomment %}
-                    <div
-                        id="edit-book-container"
-                        x-show="editOpen"
-                        x-cloak
-                        class="z-50 fixed inset-0 flex justify-center items-center bg-black/50 p-4"
-                    ></div>
+                    {% comment %} #:> Book list table {% endcomment %}
+                    {% partial book_list %}
                 </div>
-                {% comment %} Book table empty state partial with empty state message {% endcomment %}
-                {% partialdef book_table_empty inline %}
-                    <div
-                        id="empty-state"
-                        class="{% if books %}hidden{% endif %}"
-                        hx-swap-oob="true"
-                    >
-                        <p>No books found.</p>
-                    </div>
-                {% endpartialdef book_table_empty %}
             </div>
         </div>
     </div>
@@ -80,7 +62,7 @@
     {% include "partials/modals.html#delete_confirm" %}
 {% endblock content %}
 {% comment %} Page-level partials {% endcomment %}
-{% comment %} #:> Book row partial {% endcomment %}
+{% comment %} #:> Partial Book row {% endcomment %}
 {% partialdef book_row %}
     <div
         x-data="timedVisibility"
@@ -214,7 +196,7 @@
         {% endif %}
     </form>
 {% endpartialdef book_form_add %}
-{% comment %} #:> Edit book form {% endcomment %}
+{% comment %} #:> Partial edit book form {% endcomment %}
 {% partialdef book_form_edit %}
     <form
         id="book-form-edit"
@@ -303,7 +285,7 @@
         {% endif %}
     </form>
 {% endpartialdef book_form_edit %}
-{% comment %} Book table header partial {% endcomment %}
+{% comment %} #:> Partial book table {% endcomment %}
 {% partialdef book_table %}
     {% partial book_item %}
     {% partial book_table_empty %}
@@ -313,3 +295,32 @@
         {% endif %}
     {% endif %}
 {% endpartialdef book_table %}
+{% comment %} #:> Partial search table {% endcomment %}
+{% partialdef book_list %}
+    {% for book in books %}
+        {% partial book_item %}
+    {% endfor %}
+    {% comment %} #:> Popup container for book editing {% endcomment %}
+    <div
+        id="edit-book-container"
+        x-show="editOpen"
+        x-cloak
+        class="z-50 fixed inset-0 flex justify-center items-center bg-black/50 p-4"
+    ></div>
+    {% comment %} Book table empty state partial with empty state message {% endcomment %}
+    {% partialdef book_table_empty inline %}
+        <div
+            id="empty-state"
+            class="{% if books %}hidden{% endif %}"
+            hx-swap-oob="true"
+        >
+            <p>No books found.</p>
+        </div>
+    {% endpartialdef book_table_empty %}
+{% endpartialdef book_list %}
+{% partialdef search_table %}
+    {% for book in books %}
+        {% partial book_item %}
+    {% endfor %}
+    {% partial book_table_empty %}
+{% endpartialdef search_table %}

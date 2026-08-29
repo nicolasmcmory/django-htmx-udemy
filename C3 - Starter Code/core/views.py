@@ -176,8 +176,6 @@ class SearchBooks(LoginRequiredMixin, View):
         books = user.get_books()
         query = request.GET.get("search", "")
         # Get the first matching book for both name and genre search
-        books = books.filter(
-            Q(name__icontains=query) | Q(genres__icontains=query)
-        )
+        books = books.filter(Q(name__icontains=query) | Q(genres__icontains=query))
         print(f"Search query: {query}")  # Debugging line
-        return HttpResponse()
+        return render(request, "index.html#search_table", {"books": books})
