@@ -1,5 +1,6 @@
 # Utility modules
 from django.shortcuts import render, redirect
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views import View
@@ -20,13 +21,17 @@ def index(request):
     context = {
         "books": books,
         "form": BookForm(user=user),
+        "form_id": "book-form-add",
+        "form_action": reverse("index"),
+        "form_target": "#book-list",
+        "form_swap": "afterbegin",
     }
     # Htmx check
     is_htmx = request.headers.get("HX-Request") == "true"
 
     # If post request then process as post
     if request.method == "POST":
-        form = BookForm(request.POST, user=user)
+        form = BookForm(request.POST, request.FILES, user=user)
         if form.is_valid():
             name = form.cleaned_data["name"]
             genres = form.cleaned_data["genres"]
@@ -65,8 +70,16 @@ def index(request):
             if is_htmx:
                 return render(
                     request,
-                    "index.html#book_form_add",
-                    {"form": form, "error": error_message, "is_htmx": is_htmx},
+                    "index.html#book_form",
+                    {
+                        "form": form,
+                        "error": error_message,
+                        "is_htmx": is_htmx,
+                        "form_id": "book-form-add",
+                        "form_action": reverse("index"),
+                        "form_target": "#book-list",
+                        "form_swap": "afterbegin",
+                    },
                     status=422,
                 )
             # If htmx is not present, render the full page with errors
@@ -74,13 +87,6 @@ def index(request):
                 return render(request, "index.html", context)
 
     return render(request, "index.html", context)
-
-
-# Delete book by method 1: Function-based view
-def delete_book(request, book_id):
-    book = BookService.get_by_id(book_id)
-    book_name = book.name  # Store the book name before deletion
-    book.delete()
 
 
 # Delete book by method 2: Class-based view
@@ -98,6 +104,12 @@ class DeleteBook(LoginRequiredMixin, View):
         is_htmx = request.headers.get("HX-Request") == "true"
 
         user.remove_book(book)  # Remove the book from the user's collection
+
+        # Only delete the book (and its image via the post_delete signal)
+        # if no other user still tracks it
+        if not book.users.exists():
+            book.delete()
+
         books = user.get_books()
         if is_htmx:
             # Return the empty-state OOB fragment so it becomes visible once the last book is removed
@@ -122,8 +134,17 @@ class EditBook(LoginRequiredMixin, View):
         if request.htmx:
             return render(
                 request,
-                "index.html#book_form_edit",
-                {"form": form, "book": book, "is_htmx": True},
+                "index.html#book_form",
+                {
+                    "form": form,
+                    "book": book,
+                    "is_htmx": True,
+                    "is_edit": True,
+                    "form_id": "book-form-edit",
+                    "form_action": reverse("edit-book", args=[book.pk]),
+                    "form_target": f"#book-{book.pk}",
+                    "form_swap": "outerHTML",
+                },
             )
         return redirect("index")
 
@@ -156,12 +177,17 @@ class EditBook(LoginRequiredMixin, View):
             if request.htmx:
                 return render(
                     request,
-                    "index.html#book_form_edit",
+                    "index.html#book_form",
                     {
                         "book": book,
                         "form": form,
                         "error": error_message,
                         "is_htmx": True,
+                        "is_edit": True,
+                        "form_id": "book-form-edit",
+                        "form_action": reverse("edit-book", args=[book.pk]),
+                        "form_target": f"#book-{book.pk}",
+                        "form_swap": "outerHTML",
                     },
                     status=422,
                 )

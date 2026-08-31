@@ -5,7 +5,7 @@ from .models import Book
 class BookForm(forms.ModelForm):
     class Meta:
         model = Book
-        fields = ["name", "genres"]
+        fields = ["name", "genres", "image"]
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -27,6 +27,12 @@ class BookForm(forms.ModelForm):
                 )
 
         return name
+
+    def clean_image(self):
+        image = self.cleaned_data.get("image")
+        if image and image.size > 2 * 1024 * 1024:  # 2MB limit
+            raise forms.ValidationError("Image size should not exceed 2MB.")
+        return image
 
     def clean_genres(self):
         genres = self.cleaned_data.get("genres")

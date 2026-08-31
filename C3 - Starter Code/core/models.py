@@ -17,6 +17,7 @@ class Book(models.Model):
 
     name = models.CharField(max_length=172)
     genres = models.CharField(max_length=20, choices=GenreChoices.choices)
+    image = models.ImageField(upload_to="book_images", null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 

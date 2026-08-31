@@ -15,7 +15,7 @@
             >
                 <h2 class="text-2xl">Add a book:</h2>
                 {% comment %} Add book form {% endcomment %}
-                {% partial book_form_add %}
+                {% partial book_form %}
             </div>
         </div>
         {% comment %} #:> Book list wrapper {% endcomment %}
@@ -40,7 +40,7 @@
                     type="search"
                     name="search"
                     hx-get="{% url 'search-books' %}"
-                    hx-trigger="input changed delay:200ms, keyup[key=='Enter'], load"
+                    hx-trigger="input changed delay:500ms"
                     hx-swap="innerHTML"
                     hx-target="#book-list"
                     hx-indicator=".htmx-indicator"
@@ -49,7 +49,7 @@
             </div>
             {% comment %} #:> Book list container {% endcomment %}
             <div
-                class="flex flex-col justify-center items-center bg-blue-300 mt-6 px-12 py-8 rounded-lg w-full"
+                class="flex flex-col justify-center items-center bg-blue-300 mt-6 px-12 py-8 rounded-lg w-full min-w-fit overflow-scroll scrollbar-none"
             >
                 <div x-data="{editOpen : false}" id="book-list" class="w-full">
                     {% comment %} #:> Book list table {% endcomment %}
@@ -69,6 +69,13 @@
         :class="show?'bg-green-500':'bg-inherit'"
         class="flex justify-center md:justify-between items-center gap-8 px-8 py-2 rounded-lg transition-colors duration-200"
     >
+        {% if book.image %}
+            <img
+                src="{{ book.image.url }}"
+                alt="{{ book.name }}"
+                class="hidden md:block rounded w-24 h-auto object-cover"
+            />
+        {% endif %}
         <p class="flex-1 px-6 text-lg text-center">{{ book.name }}</p>
         <p class="hidden md:block flex-1 px-6 text-lg text-center">{{ book.get_genres_display }}</p>
         {% comment %} #:> Edit book button {% endcomment %}
@@ -81,7 +88,7 @@
         >edit</button>
         {% comment %} Delete book button {% endcomment %}
         <button
-            hx-post="{% url "delete-book" book.pk %}"
+            hx-delete="{% url "delete-book" book.pk %}"
             hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
             hx-target="closest #book-{{ book.pk }}"
             hx-swap="delete"
@@ -110,18 +117,23 @@
         {% endif %}
     </div>
 {% endpartialdef form_messages %}
-{% partialdef book_form_add %}
+{% comment %} #:> Partial book form (shared by add & edit) {% endcomment %}
+{% partialdef book_form %}
     <form
-        id="book-form-add"
-        action="{% url 'index' %}"
+        x-data="{fileName:''}"
+        @reset="fileName=''"
+        id="{{ form_id }}"
         method="post"
-        hx-post="{% url 'index' %}"
+        action="{{ form_action }}"
+        enctype="multipart/form-data"
+        hx-encoding="multipart/form-data"
+        hx-post="{{ form_action }}"
         hx-indicator="#loading"
-        hx-target="#book-list"
-        hx-swap="afterbegin"
-        hx-status:422="target:#book-form-add swap:outerHTML"
-        hx-on::after:request="if (ctx.response.status < 400) this.reset()"
-        class="flex flex-col gap-8"
+        hx-target="{{ form_target }}"
+        hx-swap="{{ form_swap }}"
+        hx-status:422="target:#{{ form_id }} swap:outerHTML"
+        {% if is_edit %} @click.outside="editOpen = false" hx-replace-url="{% url 'index' %}" x-on:htmx:after:request="if ($event.detail.ctx.response.status < 400) editOpen = false;" {% else %} hx-on::after:request="if (ctx.response.status < 400) this.reset()" {% endif %}
+        class="flex flex-col gap-8 {% if is_edit %}bg-white p-8 rounded-lg w-full max-w-md{% endif %}"
         novalidate
     >
         {% csrf_token %}
@@ -172,99 +184,38 @@
                 {% endfor %}
             {% endif %}
         </div>
-        <button
-            type="submit"
-            class="p-2 border border-blue-500 rounded-lg cursor-pointer"
-        >Add book</button>
-        {% comment %} Messages on form submission {% endcomment %}
-        <div
-            id="form-messages"
-            data-message="{% firstof success error '' %}"
-            x-data="timedVisibility(Boolean($el.dataset.message)) "
-            x-show="show"
-            x-transition.opacity.duration.500ms
-        >
-            {% if success %}
-                <p class="text-green-500 text-sm">{{ success }}</p>
-            {% elif error %}
-                <p class="text-red-500 text-sm">{{ error }}</p>
-            {% endif %}
-        </div>
-        {% comment %} Loading status indicator {% endcomment %}
-        {% if is_htmx %}
-            <div id="loading" class="htmx-indicator">Loading...</div>
-        {% endif %}
-    </form>
-{% endpartialdef book_form_add %}
-{% comment %} #:> Partial edit book form {% endcomment %}
-{% partialdef book_form_edit %}
-    <form
-        id="book-form-edit"
-        @click.outside="editOpen = false"
-        method="post"
-        action="{% url 'edit-book' book.pk %}"
-        hx-post="{% url 'edit-book' book.pk %}"
-        hx-indicator="#loading"
-        hx-target="#book-{{ book.pk }}"
-        hx-swap="outerHTML"
-        hx-replace-url="{% url 'index' %}"
-        hx-status:422="target:#book-form-edit swap:outerHTML"
-        x-on:htmx:after:request="if ($event.detail.ctx.response.status < 400) editOpen = false;"
-        class="flex flex-col gap-8 bg-white p-8 rounded-lg w-full max-w-md"
-        novalidate
-    >
-        {% csrf_token %}
-        {% if form.non_field_errors %}
-            <div class="text-red-500 text-sm">
-                {% for error in form.non_field_errors %}
-                    <p>{{ error }}</p>
-                {% endfor %}
+        {% comment %} Image upload {% endcomment %}
+        {% if not is_edit %}
+            <div class="flex flex-col gap-4">
+                <label for="upload-image" class="text-lg">Image uploads:</label>
+                <input
+                    id="upload-image"
+                    class="hidden"
+                    type="file"
+                    name="image"
+                    accept="image/*"
+                    x-ref="file"
+                    @change="fileName = $refs.file.files.length ? $refs.file.files[0].name : ''"
+                    title="Choose an image..."
+                />
+                <button
+                    type="button"
+                    @click="$refs.file.click()"
+                    class="p-2 border border-gray-600 rounded-lg cursor-pointer"
+                >
+                    <span x-text="fileName || 'Coose an image...'"></span>
+                </button>
+                {% if form.image.errors %}
+                    {% for error in form.image.errors %}
+                        <p class="text-red-500 text-sm">{{ error }}</p>
+                    {% endfor %}
+                {% endif %}
             </div>
         {% endif %}
-        <div class="flex flex-col gap-4">
-            <label for="name" class="text-lg">Name: <span class="text-red-500">*</span></label>
-            <input
-                type="text"
-                id="name"
-                name="name"
-                value="{{ form.name.value|default:'' }}"
-                class="p-2 border border-gray-600 rounded-lg {% if form.name.errors %}border-red-300{% endif %}"
-                required
-                minlength="1"
-                maxlength="172"
-            />
-            {% if form.name.errors %}
-                {% for error in form.name.errors %}
-                    <p class="text-red-500 text-sm">{{ error }}</p>
-                {% endfor %}
-            {% endif %}
-        </div>
-        <div class="flex flex-col gap-4">
-            <label for="genres" class="text-lg">Genres: <span class="text-red-500">*</span></label>
-            <select
-                id="genres"
-                name="genres"
-                class="p-2 border border-gray-600 rounded-lg {% if form.genres.errors %}border-red-300{% endif %}"
-                required
-            >
-                <option value="">Select a genre...</option>
-                {% for value, label in form.genres.field.choices %}
-                    <option
-                        value="{{ value }}"
-                        {% if form.genres.value == value %}selected{% endif %}
-                    >{{ label }}</option>
-                {% endfor %}
-            </select>
-            {% if form.genres.errors %}
-                {% for error in form.genres.errors %}
-                    <p class="text-red-500 text-sm">{{ error }}</p>
-                {% endfor %}
-            {% endif %}
-        </div>
         <button
             type="submit"
             class="p-2 border border-blue-500 rounded-lg cursor-pointer"
-        >Edit book</button>
+        >{% if is_edit %}Edit book{% else %}Add book{% endif %}</button>
         {% comment %} Messages on form submission {% endcomment %}
         <div
             id="form-messages"
@@ -284,8 +235,8 @@
             <div id="loading" class="htmx-indicator">Loading...</div>
         {% endif %}
     </form>
-{% endpartialdef book_form_edit %}
-{% comment %} #:> Partial book table {% endcomment %}
+{% endpartialdef %}
+{% comment %} #:> Partial book table (default & add book) {% endcomment %}
 {% partialdef book_table %}
     {% partial book_item %}
     {% partial book_table_empty %}
@@ -300,7 +251,7 @@
     {% for book in books %}
         {% partial book_item %}
     {% endfor %}
-    {% comment %} #:> Popup container for book editing {% endcomment %}
+    {% comment %} #:> Popup container book editing {% endcomment %}
     <div
         id="edit-book-container"
         x-show="editOpen"
@@ -318,6 +269,7 @@
         </div>
     {% endpartialdef book_table_empty %}
 {% endpartialdef book_list %}
+{% comment %} Search table for displaying books from active search {% endcomment %}
 {% partialdef search_table %}
     {% for book in books %}
         {% partial book_item %}
