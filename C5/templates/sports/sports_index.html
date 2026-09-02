@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="flex flex-col justify-center items-center">
+        <h1 class="text-lg">Your fixtures:</h1>
+        <div id="fixture-block" class="flex flex-col justify-center items-center">
+            {% for fixture in fixtures %}
+                <p class="text-center">{{ fixture }}</p>
+            {% empty %}
+                <p class="text-center">No fixtures...</p>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock content %}

@@ -1,0 +1,6 @@
+@import 'tailwindcss';
+
+/* Cloak all alpine components until Alpine is loaded */
+[x-cloak] {
+  display: none !important;
+}
