@@ -1,13 +1,30 @@
 {% extends "base.html" %}
 {% block content %}
-    <div class="flex flex-col justify-center items-center">
-        <h1 class="text-lg">Your fixtures:</h1>
-        <div id="fixture-block" class="flex flex-col justify-center items-center">
-            {% for fixture in fixtures %}
-                <p class="text-center">{{ fixture }}</p>
-            {% empty %}
-                <p class="text-center">No fixtures...</p>
-            {% endfor %}
-        </div>
+    <div class="flex flex-col justify-center items-center gap-12 mt-12 p-8">
+        <h1 class="font-bold text-green-800 text-4xl">Your fixtures:</h1>
+        {% comment %} Htmx indicator {% endcomment %}
+        <img
+            role="status"
+            id="spinner"
+            src="{{ MEDIA_URL }}spinner.gif"
+            alt="Loading..."
+            class="w-12 h-auto htmx-indicator"
+        />
+        {% partialdef fixtures_block inline %}
+            <div
+                id="fixture-block"
+                hx-get="{% url 'sports-index' %}"
+                hx-trigger="every 10s"
+                hx-swap="outerHTML swap:300ms settle:300ms"
+                hx-indicator="#spinner"
+                class="flex flex-col justify-center items-center opacity-100 [&.htmx-settling]:opacity-0 [&.htmx-swapping]:opacity-0 transition-opacity duration-300 ease-in-out"
+            >
+                {% for fixture in fixtures %}
+                    <p class="font-semibold text-orange-900 text-center">{{ fixture }}</p>
+                {% empty %}
+                    <p class="font-semibold text-orange-900 text-center">No fixtures...</p>
+                {% endfor %}
+            </div>
+        {% endpartialdef fixtures_block %}
     </div>
 {% endblock content %}

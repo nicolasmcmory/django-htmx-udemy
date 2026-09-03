@@ -4,3 +4,20 @@
 [x-cloak] {
   display: none !important;
 }
+
+/* Htmx runtime styles */
+/* .htmx-indicator {
+  opacity: 0;
+  visibility: hidden;
+  display: none;
+  pointer-events: none;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.htmx-request.htmx-indicator,
+.htmx-request .htmx-indicator {
+  opacity: 1;
+  display: block;
+  visibility: visible;
+  pointer-events: auto;
+} */
